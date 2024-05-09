@@ -1,0 +1,126 @@
+graphnet [MainProcess] INFO     2024-05-09 10:47:23 - NodesAsPulses.__init__ - Writing log to logs/graphnet_20240509-104723.log
+Split set of length 299 into a set of [225  37  37] ([225 262])
+Split set of length 299 into a set of [225  37  37] ([225 262])
+Split set of length 399 into a set of [301  49  49] ([301 350])
+/home/rcamphyn/env/graphnet_env/lib/python3.9/site-packages/lightning/pytorch/utilities/parsing.py:199: Attribute 'graph_definition' is an instance of `nn.Module` and is already saved during checkpointing. It is recommended to ignore them using `self.save_hyperparameters(ignore=['graph_definition'])`.
+WARNING:FractionalSignalDataset-Train:Found 16 events with a NaN trace (out of 5265). Remove those
+INFO:FractionalSignalDataset-Train:Read 5249 signal events. Will inject them with a fraction of 0.500
+INFO:FractionalSignalDataset-Train:Read 157775 signal noise events
+/home/rcamphyn/env/graphnet_env/lib/python3.9/site-packages/torch/utils/data/dataloader.py:558: UserWarning: This DataLoader will create 5 worker processes in total. Our suggested max number of worker in current system is 1, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
+  warnings.warn(_create_warning_msg(
+graphnet [MainProcess] INFO     2024-05-09 10:47:43 - StandardModel._print_callbacks - Training initiated with callbacks: ProgressBar
+INFO:graphnet.models.standard_model:Training initiated with callbacks: ProgressBar
+INFO: GPU available: True (cuda), used: False
+INFO:lightning.pytorch.utilities.rank_zero:GPU available: True (cuda), used: False
+INFO: TPU available: False, using: 0 TPU cores
+INFO:lightning.pytorch.utilities.rank_zero:TPU available: False, using: 0 TPU cores
+INFO: IPU available: False, using: 0 IPUs
+INFO:lightning.pytorch.utilities.rank_zero:IPU available: False, using: 0 IPUs
+INFO: HPU available: False, using: 0 HPUs
+INFO:lightning.pytorch.utilities.rank_zero:HPU available: False, using: 0 HPUs
+/home/rcamphyn/env/graphnet_env/lib/python3.9/site-packages/pytorch_lightning/trainer/setup.py:187: GPU available but not used. You can set it by doing `Trainer(accelerator='gpu')`.
+/home/rcamphyn/env/graphnet_env/lib/python3.9/site-packages/pytorch_lightning/trainer/connectors/logger_connector/logger_connector.py:75: Starting from v1.9.0, `tensorboardX` has been removed as a dependency of the `pytorch_lightning` package, due to potential conflicts with other packages in the ML ecosystem. For this reason, `logger=True` will use `CSVLogger` as the default logger, unless the `tensorboard` or `tensorboardX` packages are found. Please `pip install lightning[extra]` or one of them to enable TensorBoard support by default
+/home/rcamphyn/env/graphnet_env/lib/python3.9/site-packages/pytorch_lightning/trainer/configuration_validator.py:74: You defined a `validation_step` but have no `val_dataloader`. Skipping val loop.
+Initializing distributed: GLOBAL_RANK: 0, MEMBER: 1/1
+INFO: ----------------------------------------------------------------------------------------------------
+distributed_backend=gloo
+All distributed processes registered. Starting with 1 processes
+----------------------------------------------------------------------------------------------------
+
+INFO:lightning.pytorch.utilities.rank_zero:----------------------------------------------------------------------------------------------------
+distributed_backend=gloo
+All distributed processes registered. Starting with 1 processes
+----------------------------------------------------------------------------------------------------
+
+
+  | Name              | Type       | Params
+-------------------------------------------------
+0 | _graph_definition | KNNGraph   | 0     
+1 | backbone          | DynEdge    | 1.3 M 
+2 | _tasks            | ModuleList | 129   
+-------------------------------------------------
+1.3 M     Trainable params
+0         Non-trainable params
+1.3 M     Total params
+5.393     Total estimated model params size (MB)
+SLURM auto-requeueing enabled. Setting signal handlers.
+
+-------------------------------------------------------------------------------
+train.py 66 <module>
+model.fit(train_dataloader, max_epochs = 1)
+
+standard_model.py 167 fit
+trainer.fit(
+
+trainer.py 544 fit
+call._call_and_handle_interrupt(
+
+call.py 43 _call_and_handle_interrupt
+return trainer.strategy.launcher.launch(trainer_fn, *args, trainer=trainer, **kwargs)
+
+subprocess_script.py 105 launch
+return function(*args, **kwargs)
+
+trainer.py 580 _fit_impl
+self._run(model, ckpt_path=ckpt_path)
+
+trainer.py 987 _run
+results = self._run_stage()
+
+trainer.py 1033 _run_stage
+self.fit_loop.run()
+
+fit_loop.py 197 run
+self.setup_data()
+
+fit_loop.py 263 setup_data
+iter(self._data_fetcher)  # creates the iterator inside the fetcher
+
+fetchers.py 111 __iter__
+batch = super().__next__()
+
+fetchers.py 60 __next__
+batch = next(self.iterator)
+
+combined_loader.py 341 __next__
+out = next(self._iterator)
+
+combined_loader.py 78 __next__
+out[i] = next(self.iterators[i])
+
+dataloader.py 631 __next__
+data = self._next_data()
+
+dataloader.py 1346 _next_data
+return self._process_data(data)
+
+dataloader.py 1372 _process_data
+data.reraise()
+
+_utils.py 722 reraise
+raise exception
+
+AssertionError:
+Caught AssertionError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "/home/rcamphyn/env/graphnet_env/lib/python3.9/site-packages/torch/utils/data/_utils/worker.py", line 308, in _worker_loop
+    data = fetcher.fetch(index)
+  File "/home/rcamphyn/env/graphnet_env/lib/python3.9/site-packages/torch/utils/data/_utils/fetch.py", line 32, in fetch
+    data.append(next(self.dataset_iter))
+  File "/home/rcamphyn/graphnet/eventfiltering_graphnet/data.py", line 248, in __iter__
+    noise = self.convert_to_graph(noise, 0, graph_definition = self.graph_definition)
+  File "/home/rcamphyn/graphnet/eventfiltering_graphnet/data.py", line 394, in convert_to_graph
+    graph = graph_definition(input_features = wf, input_feature_names = [str(i) for i in np.arange(15)], truth_dicts = truth_dicts)
+  File "/home/rcamphyn/env/graphnet_env/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1511, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/rcamphyn/env/graphnet_env/lib/python3.9/site-packages/torch/nn/modules/module.py", line 1520, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/rcamphyn/graphnet/graphnet_rc/src/graphnet/models/graphs/graph_definition.py", line 168, in forward
+    self._validate_input(
+  File "/home/rcamphyn/graphnet/graphnet_rc/src/graphnet/models/graphs/graph_definition.py", line 321, in _validate_input
+    assert len(input_feature_names) == len(
+AssertionError: Input features (['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14']) is not what 
+               KNNGraph was instatiated
+               with (['sensor_x', 'sensor_y', 'sensor_z', 'sensor_time', 'sensor_voltage'])
+
+srun: error: her2-w138: task 0: Exited with exit code 1
