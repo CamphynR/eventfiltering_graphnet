@@ -1,10 +1,11 @@
 import sys
 import logging 
 logging.basicConfig()
+from typing import List
 
 import numpy as np
 import torch
-from torch_geometric.data import Data
+from torch_geometric.data import Data, Batch
 import lightning.pytorch as pl
 from torch.utils.data import DataLoader
 from scipy import signal
@@ -106,6 +107,14 @@ def time_trace_to_stft(wfs, sampling_rate = 3.2e9, nperseg = 128):
     freqs, times, stft = signal.stft(wfs, fs = sampling_rate, nperseg = nperseg)
     return freqs, times, stft
     
+def collate_fn(graphs: List[Data]) -> Batch:
+    """COPIED FROM GRAPHNET SRC COUDE under training.utils
+    Remove graphs with less than two DOM hits.
+
+    Should not occur in "production".
+    """
+    graphs = [g for g in graphs if g.n_pulses > 1]
+    return Batch.from_data_list(graphs)
 
 class ClassifierData(pl.core.LightningDataModule):
 
@@ -148,24 +157,31 @@ class ClassifierData(pl.core.LightningDataModule):
         
         self.save_hyperparameters() # option tells lightning to save used hyperparameters in the checkpoints
 
+    
     def setup(self, stage: str):
         pass
 
     def train_dataloader(self):
         self.dataset_train = self.DatasetClass(
-            **self.train_paths, **self.dataset_kwargs, label="-Train", graph_definition = self.graph_definition)
-        return DataLoader(self.dataset_train, **self.dataloader_kwargs)
+            **self.train_paths, **self.dataset_kwargs, label="-Train",
+            graph_definition = self.graph_definition)
+        return DataLoader(self.dataset_train, **self.dataloader_kwargs,
+                          collate_fn=collate_fn)#, persistent_workers=True, prefetch_factor=2)
 
     def val_dataloader(self):
         self.dataset_valid = self.DatasetClass(
-            **self.valid_paths, **self.dataset_kwargs, label="-Valid")
-        return DataLoader(self.dataset_valid, **self.dataloader_kwargs, graph_definition = self.graph_definition)
+            **self.valid_paths, **self.dataset_kwargs, label="-Valid",
+            graph_definition = self.graph_definition)
+        return DataLoader(self.dataset_valid, **self.dataloader_kwargs,
+                          collate_fn=collate_fn)#, persistent_workers=True, prefetch_factor=2)
     
     def test_dataloader(self, l_kwargs={}):
         self.dataloader_kwargs.update(l_kwargs)
         self.dataset_test = self.DatasetClass(
-            **self.test_paths, **self.dataset_kwargs, label="-Test")
-        return DataLoader(self.dataset_test, **self.dataloader_kwargs, graph_definition = self.graph_definition)
+            **self.test_paths, **self.dataset_kwargs, label="-Test",
+            graph_definition = self.graph_definition)
+        return DataLoader(self.dataset_test, **self.dataloader_kwargs,
+                          collate_fn=collate_fn)#, persistent_workers=True, prefetch_factor=2)
 
    # teardown is used to clean up after the run is finished
    # this function is called at the end of train + validate, validate, test or predict
@@ -224,9 +240,10 @@ class FractionalSignalDatasetIter(torch.utils.data.IterableDataset):
         
         
     def __iter__(self):
-        
-        for path in self.noise_file_list:
-            noise_traces = np.load(path)["wfs"] # shape (events, channels, 2048)
+        np.random.shuffle(self.noise_file_list)
+        for path in self.noise_file_listexi:
+            with np.load(path) as f:
+                noise_traces = f["wfs"] # shape (events, channels, 2048)
             
             noise_traces = self._noise_preprocessing(noise_traces)
             for noise in noise_traces:
@@ -254,7 +271,12 @@ class FractionalSignalDatasetIter(torch.utils.data.IterableDataset):
     def set_signals(self, signal_file_list):
         
         # Read signals
-        self._signal_wfs = np.vstack([np.load(path)["wfs"].reshape(-1, 15, 2048) for path in signal_file_list], dtype=np.float32) # shape = (total_nr_of_runs, channels, samples)
+        self._signal_wfs = []
+        for path in signal_file_list:
+            with np.load(path) as f:
+                self._signal_wfs.append(f["wfs"].reshape(-1, 15, 2048))
+        
+        self._signal_wfs = np.vstack(self._signal_wfs, dtype=np.float32) # shape = (total_nr_of_runs, channels, samples)
 
         mask = np.array([np.any(np.isnan(ele)) for ele in self._signal_wfs])
         
@@ -272,7 +294,11 @@ class FractionalSignalDatasetIter(torch.utils.data.IterableDataset):
     def set_signal_noise(self, paths):
                 
         # Read signals
-        self._signal_noise_wfs = np.vstack([np.load(path)["wfs"] for path in paths])
+        self._signal_noise_wfs = []
+        for path in paths:
+            with np.load(path) as f:
+                self._signal_noise_wfs.append(f["wfs"])
+        self._signal_noise_wfs = np.vstack(self._signal_noise_wfs)
         self._n_signal_noise = len(self._signal_noise_wfs)
 
         self._signal_noise_used = np.zeros(self._n_signal_noise)  # for bookkeeping
@@ -393,7 +419,7 @@ class FractionalSignalDatasetIter(torch.utils.data.IterableDataset):
         # assumes wf shape = (2048, 15) (or (1, 2048, 15))
         wf = np.squeeze(wf).T
 
-        graph = graph_definition(input_features = wf, input_feature_names = [str(i) for i in range(nr_of_timesteps)], truth_dicts = truth_dicts) 
+        graph = graph_definition(input_features = wf, input_feature_names = [str(i) for i in range(nr_of_timesteps)], truth_dicts = [truth_dicts]) 
         return graph        
 
 
@@ -431,7 +457,7 @@ class TimeTraceDataset(FractionalSignalDatasetIter):
             max_ampls = np.amax(np.amax(np.abs(wfs[channel_to_use]), axis=-1))
             return wfs / max_ampls, max_ampls
         else:
-            logger.error("Undefined dimension")
+            self.logger.error("Undefined dimension")
             sys.exit()
 
     def _waveform_processing(self, wf):
